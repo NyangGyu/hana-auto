@@ -157,12 +157,56 @@
 /* ============================================================
    하나생명 시책 진도현황 이미지 생성기 (무외부의존 · Pretendard 웹폰트)
    ============================================================ */
-const THRESH   = [100000,200000,300000,500000,700000];
-const THLABEL  = ['10만↑','20만↑','30만↑','50만↑','70만↑'];
-const SALES_PAYOUT = ['100만','200만','300만','500만','700만'];
-const SALES_FULL   = ['100만원','200만원','300만원','500만원','700만원'];
-const CONT_PAYOUT  = ['40만','80만','120만','200만','280만'];
-const CONT_FULL    = ['40만원','80만원','120만원','200만원','280만원'];
+/* ────────────────────────────────────────────────────────────
+   ★★★ 매월 바뀌는 값은 전부 여기(CONFIG)에 있습니다 ★★★
+   시책이 바뀌면 아래 블록만 고치면 되고, 그 아래 코드는 건드릴 필요 없습니다.
+   (현재 값 = 2026년 8월 시책 · 디자인 01~03.PNG 기준)
+   ──────────────────────────────────────────────────────────── */
+const CONFIG = {
+  month     : 8,            // 시책 월 → 헤더 "N월 건강보험 시책", ③ "N월 현재 합산P"
+  prevMonth : 7,            // 연속가동 판정 기준 전월 → ③ 배지 "N월 가동 ✓"
+
+  // 구간 문턱(원) — 5개 구간 공통
+  thresh  : [100000,200000,300000,500000,700000],
+  thLabel : ['10만↑','20만↑','30만↑','50만↑','70만↑'],
+
+  // ① 판매활성화 시상
+  sales : {
+    max    : '최대 1,100%',
+    payout : ['110만','220만','330만','550만','770만'],      // 구간칩 표기
+    full   : ['110만원','220만원','330만원','550만원','770만원'], // 하단 배너 표기
+  },
+
+  // ② 주요특약 시상 — table은 [헤더, 값] 열 목록. 열 개수는 자유(2열/3열 모두 가능)
+  rider : {
+    max   : '최대 100% 건당 시상',
+    note  : '주요특약 포함 보험료 별로 시상금이 적립',
+    table : [ ['10만↑','10만'], ['20만↑','20만'] ],
+  },
+
+  // ③ 연속가동 시상
+  cont : {
+    max    : '최대 400%',
+    payout : ['40만','80만','120만','200만','280만'],
+    full   : ['40만원','80만원','120만원','200만원','280만원'],
+  },
+
+  // 하단 푸터
+  footer : {
+    lead    : '여기에 기본 시상 + 수수료까지!',
+    target  : '대상 상품 (유병자 305, 335, 355, 3105 포함)',
+    product : '하나로 누리는 건강, 라이트 3.10.5',
+    note    : '※ 일반형과 10년납 이하 [월초 × 50%] 적용 인정 (단, 10년 갱신은 제외) · 설계사 본인계약 부지급 (단, 수익자·친권자는 인정) · [13회차 유지 조건]',
+  },
+};
+/* ──────────────────────────────────────────────────────────── */
+
+const THRESH   = CONFIG.thresh;
+const THLABEL  = CONFIG.thLabel;
+const SALES_PAYOUT = CONFIG.sales.payout;
+const SALES_FULL   = CONFIG.sales.full;
+const CONT_PAYOUT  = CONFIG.cont.payout;
+const CONT_FULL    = CONFIG.cont.full;
 
 const C = {
   brand:'#005442', gold:'#FFD34D', goldLine:'#E0C860', cream:'#FFF8DD', white:'#FFFFFF',
@@ -171,6 +215,7 @@ const C = {
   tierDoneBg:'#005442', tierDoneTx:'#FFFFFF',
   tierCurBg:'#FFF3C4', tierCurTx:'#8A6D00', tierCurBorder:'#E0C860',
   tierFutBg:'#F5F5F5', tierFutTx:'#AAAAAA', tierFutBorder:'#E4E4E4',
+  tblLine:'#5A5A5A', footerTx:'#404040',
 };
 const FONT = "'Pretendard','Malgun Gothic','Apple SD Gothic Neo','Segoe UI Emoji','Segoe UI Symbol',sans-serif";
 const WT = {eb:800, b:700, sb:600, md:500};
@@ -261,15 +306,16 @@ function buildTiers(p,tier,pa){
     return {no:k, label:THLABEL[i], payout:pa[i], state, short:state==='current'?Math.max(0,th-p):0};
   });
 }
-function nextInfo(p,tier,fa){ return tier>=5?null:{short:Math.max(0,THRESH[tier]-p),tierNo:tier+1,full:fa[tier]}; }
+const MAXTIER = THRESH.length;
+function nextInfo(p,tier,fa){ return tier>=MAXTIER?null:{short:Math.max(0,THRESH[tier]-p),tierNo:tier+1,full:fa[tier]}; }
 function rowToModel(r,dateLabel){
   const sP=num(r.G),sT=num(r.H),sA=num(r.I), rc=num(r.J),ra=num(r.K);
   const app=num(r.M)===1, cP=num(r.L),cT=num(r.N),cA=num(r.O);
   return {
     agency:str(r.B), branch:str(r.C), branchCode:str(r.D), name:str(r.E), code:str(r.F), dateLabel,
-    sales:{p:sP,tier:sT,award:sA,tiers:buildTiers(sP,sT,SALES_PAYOUT),next:nextInfo(sP,sT,SALES_FULL),maxed:sT>=5},
+    sales:{p:sP,tier:sT,award:sA,tiers:buildTiers(sP,sT,SALES_PAYOUT),next:nextInfo(sP,sT,SALES_FULL),maxed:sT>=MAXTIER},
     rider:{count:rc,award:ra},
-    cont:{applicable:app,p:cP,tier:cT,award:cA,tiers:buildTiers(cP,cT,CONT_PAYOUT),next:nextInfo(cP,cT,CONT_FULL),maxed:cT>=5},
+    cont:{applicable:app,p:cP,tier:cT,award:cA,tiers:buildTiers(cP,cT,CONT_PAYOUT),next:nextInfo(cP,cT,CONT_FULL),maxed:cT>=MAXTIER},
   };
 }
 
@@ -310,18 +356,18 @@ function renderCard(m){
   const g=ctx.createRadialGradient(760,-20,0,760,-20,400);
   g.addColorStop(0,'rgba(12,120,92,.55)'); g.addColorStop(1,'rgba(12,120,92,0)');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,200);
-  T('하나생명 · 7월 건강보험 시책',40,30,PT(20),C.gold,'eb');
+  T(`하나생명 · ${CONFIG.month}월 건강보험 시책`,42,36,PT(21),C.gold,'eb');
   const dl=m.dateLabel||''; const pw=tw(dl,PT(11),'b')+34;
-  const PILL_Y=25;                                  // ← 기준일 배지 세로위치 (숫자↑ = 아래로)
+  const PILL_Y=20;                                  // ← 기준일 배지 세로위치 (숫자↑ = 아래로)
   rrect(877-pw,PILL_Y,pw,40,20,{fill:C.gold}); T(dl,877-pw/2,PILL_Y+10,PT(11),C.brand,'b','center'); // 배지 안 텍스트 세로중앙
   (function(){
     const parts=[[m.name+' 팀장님, ',C.white],['현재 달성 현황',C.gold],[' 보내드립니다!',C.white]];
     let gsz=PT(28); const total=()=>parts.reduce((s,p)=>s+tw(p[0],gsz,'eb'),0);
     while(total()>828 && gsz>22) gsz-=1;
-    const GREET_Y=76;                               // ← 인사말 세로위치 (숫자↑ = 아래로)
+    const GREET_Y=80;                               // ← 인사말 세로위치 (숫자↑ = 아래로)
     let x=40; for(const[t,c]of parts){ T(t,x,GREET_Y,gsz,c,'eb'); x+=tw(t,gsz,'eb'); }
   })();
-  T(`${m.agency} · ${m.branch} · ${m.code}`,40,136,PT(14),C.subtitle,'sb');
+  T(`${m.agency} · ${m.branch} · ${m.code}`,42,139,PT(14),C.subtitle,'sb');
 
   /* card */
   const CX=22,CW=856,RAD=16,HEAD=52,BAN=48;
@@ -330,16 +376,22 @@ function renderCard(m){
     rrect(CX,top,CW,HEAD,RAD,{fill:C.brand,corners:[1,1,0,0]});
     if(banner) rrect(CX,top+hh-BAN,CW,BAN,RAD,{fill:C.cream,corners:[0,0,1,1]});
     rrect(CX,top,CW,hh,RAD,{stroke:C.brand,sw:2});
-    const TITLE_DY=10;                              // ← 섹션 제목/우측%글씨 세로위치 (숫자↑ = 아래로)
-    T(title,CX+30,top+TITLE_DY,PT(20),C.white,'eb');
-    if(right){ let rsz=PT(20); while(tw(right,rsz,'eb')>250&&rsz>18) rsz-=1;
+    const TITLE_DY=5;                               // ← 섹션 제목/우측%글씨 세로위치 (숫자↑ = 아래로)
+    const TITLE_X=CX+21;                            // ← 섹션 제목 좌측위치
+    T(title,TITLE_X,top+TITLE_DY,PT(20),C.white,'eb');
+    if(right){ let rsz=PT(20); while(tw(right,rsz,'eb')>330&&rsz>18) rsz-=1;
       T(right,CX+CW-26,top+TITLE_DY+(PT(20)-rsz)*0.6,rsz,C.gold,'eb','right'); }
-    if(badge){ const bw=tw(badge,PT(12),'eb')+34; const bx=CX+30+tw(title,PT(20),'eb')+22;
-      rrect(bx,top+11,bw,30,15,{fill:badgeOn?C.gold:'#DDE3DF'});
-      T(badge,bx+bw/2,top+16,PT(12),badgeOn?C.brand:'#5B6B64','eb','center'); }
+    if(badge){ const bw=tw(badge,PT(12),'eb')+46; const bx=TITLE_X+tw(title,PT(20),'eb')+17;
+      rrect(bx,top+6,bw,30,15,{fill:badgeOn?C.gold:'#DDE3DF'});
+      T(badge,bx+bw/2,top+11,PT(12),badgeOn?C.brand:'#5B6B64','eb','center'); }
   }
-  const statC=(cx,y,label,value,vc)=>{ T(label,cx,y,PT(10),C.gray,'md','center'); T(value,cx,y+27,PT(20),vc,'eb','center'); };
-  const dividers=(y,xs,h)=>{ h=h||58; xs.forEach(x=>line(x,y,x,y+h,C.divider,1.4)); };
+  /* 스탯 셀 — 원본 PPT는 라벨 '좌측정렬', 값 '우측정렬' (01·02.PNG 실측)
+     stat(라벨X, 라벨Y, 값우측X, 값Y, ...) */
+  const stat=(lx,ly,vx,vy,label,value,vc)=>{
+    T(label,lx,ly,PT(10),C.gray,'md','left');
+    T(value,vx,vy,PT(20),vc,'eb','right');
+  };
+  const dividers=(y,xs,h)=>{ h=h||65; xs.forEach(x=>line(x,y,x,y+h,C.divider,1.4)); };
   function tierbox(x,top,t){
     const w=142,h=84; let bg,txc,bd;
     if(t.state==='done'){bg=C.tierDoneBg;txc=C.tierDoneTx;bd=null;}
@@ -349,9 +401,9 @@ function renderCard(m){
     const cx=x+w/2;
     T(t.label,cx,top+9,PT(11),txc,'b','center');
     T(t.payout,cx,top+28,PT(16),txc,'eb','center');
-    if(t.state==='done') T('달성 ✓',cx,top+61,PT(10.5),txc,'b','center');
-    else if(t.state==='current') T(comma(t.short)+'원 남음',cx,top+63,PT(8),txc,'b','center');
-    else T(t.no+'구간',cx,top+61,PT(10.5),txc,'b','center');
+    if(t.state==='done') T('달성 ✓',cx,top+56,PT(10.5),txc,'b','center');
+    else if(t.state==='current') T(comma(t.short)+'원 남음',cx,top+58,PT(8),txc,'b','center');
+    else T(t.no+'구간',cx,top+57,PT(10.5),txc,'b','center');
   }
   const tierrow=(top,tiers)=>{ const xs=[55,217,378,540,701]; tiers.forEach((t,i)=>tierbox(xs[i],top,t)); };
   function banner(y,nx){
@@ -362,37 +414,48 @@ function renderCard(m){
   }
 
   /* ① 판매 */
-  card(230,284,'① 판매활성화 시상','최대 1,000%',true);
-  statC(182,296,'현재 합산P',won(m.sales.p),C.brand);
-  statC(423,296,'달성 구간', m.sales.tier>0? m.sales.tier+'구간':'미달성', C.ink);
-  statC(697,296,'현재 확정 시상금',won(m.sales.award),C.danger);
-  dividers(298,[323,528]);
+  card(230,284,'① 판매활성화 시상',CONFIG.sales.max,true);
+  stat( 99,300,257,327,'현재 합산P',won(m.sales.p),C.brand);
+  stat(381,300,460,327,'달성 구간', m.sales.tier>0? m.sales.tier+'구간':'미달성', C.ink);
+  stat(590,300,796,327,'현재 확정 시상금',won(m.sales.award),C.danger);
+  dividers(295,[323,528]);
   tierrow(374,m.sales.tiers);
   if(m.sales.next) banner(476,m.sales.next);
-  else if(m.sales.maxed) T('🎉 최고 5구간 달성! 축하합니다',W/2,476,PT(16),C.brand,'eb','center');
+  else if(m.sales.maxed) T(`🎉 최고 ${MAXTIER}구간 달성! 축하합니다`,W/2,476,PT(16),C.brand,'eb','center');
 
   /* ② 특약 */
-  card(540,160,'② 주요특약 시상','최대 300% 건당 시상');
-  statC(123,600,'달성 건수',m.rider.count+'건',C.brand);
-  statC(378,600,'현재 확정 시상금',won(m.rider.award),C.danger);
-  dividers(602,[231,530],54);
-  T('주요특약 포함 보험료 별로 시상금이 적립',700,600,PT(11),C.gray,'md','center');
+  card(540,160,'② 주요특약 시상',CONFIG.rider.max);
+  stat(101,609,143,635,'달성 건수',m.rider.count+'건',C.brand);
+  stat(269,609,433,635,'현재 확정 시상금',won(m.rider.award),C.danger);
+  dividers(602,[231,530]);
+  T(CONFIG.rider.note,700,600,PT(11),C.gray,'md','center');
   (function(){
-    const tx=580,ty=630,cw=80,ch=26; const head=['7만↑','10만↑','15만↑'],val=['20만','30만','45만'];
-    for(let i=0;i<3;i++){
-      rrect(tx+i*cw,ty,cw-4,ch,4,{fill:C.brand}); T(head[i],tx+i*cw+(cw-4)/2,ty+4,PT(10.5),C.white,'b','center');
-      rrect(tx+i*cw,ty+ch+3,cw-4,ch,4,{fill:C.cream,stroke:C.goldLine,sw:1}); T(val[i],tx+i*cw+(cw-4)/2,ty+ch+5,PT(10.5),C.tierCurTx,'eb','center');
-    }
+    /* 주요특약 미니표 — 2행(헤더/값) × N열, 회색 격자선 테두리 (01.PNG 실측) */
+    const cols=CONFIG.rider.table, n=cols.length;
+    const TX=578, TW=243, TY=624, RH=[28,31];        // 표 좌상단/전체폭/행높이
+    const cw=TW/n, TH=RH[0]+RH[1];
+    rrect(TX,TY,TW,RH[0],0,{fill:C.brand});                     // 헤더행 배경
+    rrect(TX,TY+RH[0],TW,RH[1],0,{fill:C.tierCurBg});           // 값행 배경
+    const hz=PT(11), vz=PT(11.5);
+    cols.forEach(([head,val],i)=>{
+      const cx=TX+cw*i+cw/2;
+      T(head,cx,TY+RH[0]/2-hz/2,        hz,C.white,     'b', 'center');
+      T(val, cx,TY+RH[0]+RH[1]/2-vz/2,  vz,C.tierCurTx,'eb','center');
+    });
+    ctx.strokeStyle=C.tblLine; ctx.lineWidth=1.3;               // 외곽 + 격자선
+    ctx.strokeRect(TX,TY,TW,TH);
+    line(TX,TY+RH[0],TX+TW,TY+RH[0],C.tblLine,1.3);
+    for(let i=1;i<n;i++) line(TX+cw*i,TY,TX+cw*i,TY+TH,C.tblLine,1.3);
   })();
 
   /* ③ 연속 */
   const on=m.cont.applicable;
-  card(720,284,'③ 연속가동 시상','최대 400%',true, on?'6월 가동 ✓':'해당없음', on);
+  card(720,284,'③ 연속가동 시상',CONFIG.cont.max,true, on?`${CONFIG.prevMonth}월 가동 ✓`:'해당없음', on);
   if(on){
-    statC(182,786,'7월 현재 합산P',won(m.cont.p),C.brand);
-    statC(423,786,'달성 구간', m.cont.tier>0? m.cont.tier+'구간':'미달성', C.ink);
-    statC(697,786,'현재 확정 시상금',won(m.cont.award),C.danger);
-    dividers(788,[323,528]);
+    stat( 99,789,257,814,`${CONFIG.month}월 현재 합산P`,won(m.cont.p),C.brand);
+    stat(381,789,460,814,'달성 구간', m.cont.tier>0? m.cont.tier+'구간':'미달성', C.ink);
+    stat(590,789,789,814,'현재 확정 시상금',won(m.cont.award),C.danger);
+    dividers(784,[323,528]);
     tierrow(864,m.cont.tiers);
     if(m.cont.next) banner(966,m.cont.next);
     else if(m.cont.maxed) T('🎉 최고 5구간 달성! 축하합니다',W/2,966,PT(16),C.brand,'eb','center');
@@ -403,14 +466,13 @@ function renderCard(m){
 
   /* FOOTER 1038-1300 */
   ctx.fillStyle=C.footer; ctx.fillRect(0,1038,W,H-1038);
-  T('📋',60,1074,PT(20),C.brand,'eb');
-  T('여기에 기본 시상 + 수수료까지!',114,1076,PT(20),C.brand,'eb');
-  T('대상 상품 (유병자 305, 335, 355, 3105 포함)',105,1140,30,C.brand,'b');
-  T('하나로 누리는 건강, 라이트 3.10.5',105,1176,43,C.brand,'eb');
+  T('📋',58,1081,PT(20),C.brand,'eb');
+  T(CONFIG.footer.lead,103,1082,PT(20),C.brand,'eb');
+  T(CONFIG.footer.target,104,1140,30,C.footerTx,'b');
+  T(CONFIG.footer.product,104,1181,43,C.footerTx,'eb');
   const imgs=[[BILL_IMG,690,1055,110,90],[BILL_IMG,770,1085,120,95],[COIN_IMG,760,1150,60,60],[COIN_IMG,700,1180,55,55],[COIN_IMG,820,1165,50,50]];
   for(const[im,ix,iy,iw,ih]of imgs){ try{ if(im.complete&&im.naturalWidth) ctx.drawImage(im,ix,iy,iw,ih); }catch(e){} }
-  T('※ 일반형과 10년납 이하 [월초 × 50%] 적용 인정 (단, 10년 갱신은 제외) · 설계사 본인계약 부지급 (단, 수익자·친권자는 인정) · [13회차 유지 조건]',
-     W/2,1272,PT(9),C.gray,'md','center');
+  T(CONFIG.footer.note,W/2,1268,PT(9),C.gray,'md','center');
 
   return cv;
 }
