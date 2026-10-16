@@ -43,6 +43,8 @@
   .top p{margin:8px 0 0;color:#bfe3d6;font-size:13.5px;max-width:74ch}
   .top .tag{margin-left:auto;background:var(--gold);color:var(--brand);
     font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px}
+  .top .ver{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);
+    font-weight:700;font-size:12px;padding:4px 10px;border-radius:999px;white-space:nowrap}
   .themetgl{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;
     padding:5px 9px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:700}
 
@@ -109,6 +111,7 @@
     <div class="brand-row">
       <div class="logo-dot">H</div>
       <h1>하나생명 · 건강보험 시책 진도현황 이미지 생성기</h1>
+      <span class="ver" id="verTag"></span>
       <span class="tag" id="dateTag">기준일 자동인식</span>
       <button class="themetgl" id="themeBtn" title="테마 전환">◐ 테마</button>
     </div>
@@ -163,6 +166,7 @@
    (현재 값 = 2026년 10월 시책 · 디자인은 8월 01~03.PNG 기준)
    ──────────────────────────────────────────────────────────── */
 const CONFIG = {
+  updated   : '2026.10.16',   // ★ 수정 날짜 — 고칠 때마다 갱신 (화면 상단 배지에 표시)
   month     : 10,            // 시책 월 → 헤더 "N월 건강보험 시책", ③ "N월 현재 합산P"
   prevMonth : 9,          // 연속가동 판정 기준 전월 → ③ 배지 "N월 가동 ✓"
 
@@ -509,6 +513,7 @@ function buildZip(files){
    5) UI
    ============================================================ */
 const $=id=>document.getElementById(id);
+$('verTag').textContent=`${CONFIG.month}월 시책 · ${CONFIG.updated} 수정`;
 let workbookRows=null, generated=[], dateLabel='';
 
 function extractDate(fn){
